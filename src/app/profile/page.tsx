@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Camera } from 'lucide-react';
+import { Camera, HardDrive } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
 
 export default function ProfilePage() {
   const { user, userProfile, updateUserProfile, loading } = useAuth();
@@ -124,7 +125,7 @@ export default function ProfilePage() {
           <Card>
             <CardHeader>
               <CardTitle>Profile</CardTitle>
-              <CardDescription>Update your personal information.</CardDescription>
+              <CardDescription>Update your personal information and settings.</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -161,6 +162,22 @@ export default function ProfilePage() {
                 </div>
               </form>
             </CardContent>
+            <Separator />
+            <CardFooter className="pt-6">
+               <div className="space-y-4 w-full">
+                <h3 className="text-lg font-medium">Integrations</h3>
+                 <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-4">
+                      <HardDrive className="w-6 h-6 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">Google Drive</p>
+                        <p className="text-sm text-muted-foreground">Connect your Google Drive to store files.</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" onClick={() => toast({ title: 'Coming Soon!', description: 'Google Drive integration is not yet available.'})}>Connect</Button>
+                 </div>
+               </div>
+            </CardFooter>
           </Card>
         </div>
       </main>

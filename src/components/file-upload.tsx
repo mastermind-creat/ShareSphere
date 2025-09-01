@@ -1,6 +1,6 @@
 'use client';
 
-import { UploadCloud, File, X } from 'lucide-react';
+import { UploadCloud, File, X, Server, HardDrive } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from './ui/button';
 import { useAuth } from '@/hooks/use-auth';
@@ -11,6 +11,10 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db, storage } from '@/lib/firebase';
 import { Progress } from './ui/progress';
 import imageCompression from 'browser-image-compression';
+import { Label } from './ui/label';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+
+type StorageOption = 'firebase' | 'drive';
 
 export default function FileUpload() {
   const { user } = useAuth();
@@ -18,6 +22,7 @@ export default function FileUpload() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [storageOption, setStorageOption] = useState<StorageOption>('firebase');
 
   const handleFileSelect = () => {
     fileInputRef.current?.click();
@@ -39,6 +44,14 @@ export default function FileUpload() {
   };
 
   const handleUpload = async () => {
+    if (storageOption === 'drive') {
+      toast({
+        title: 'Coming Soon!',
+        description: 'Google Drive integration is not yet implemented.',
+      });
+      return;
+    }
+
     if (!selectedFile || !user) {
       toast({
         variant: 'destructive',
@@ -50,7 +63,6 @@ export default function FileUpload() {
 
     let fileToUpload = selectedFile;
     
-    // Compress image files
     if (selectedFile.type.startsWith('image/')) {
       try {
         const options = {
@@ -66,7 +78,6 @@ export default function FileUpload() {
           title: 'Compression Error',
           description: 'Could not compress the image file.',
         });
-        // Continue with original file if compression fails
       }
     }
 
@@ -90,7 +101,6 @@ export default function FileUpload() {
       async () => {
         const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
         
-        // Save metadata to Firestore
         await addDoc(collection(db, "files"), {
           name: fileToUpload.name,
           size: fileToUpload.size,
@@ -98,6 +108,7 @@ export default function FileUpload() {
           url: downloadURL,
           ownerId: user.uid,
           createdAt: serverTimestamp(),
+          storage: 'firebase',
         });
 
         toast({
@@ -138,6 +149,23 @@ export default function FileUpload() {
                   <X className="w-4 h-4" />
                 </Button>
             </div>
+            
+            <div className="space-y-2">
+              <Label>Storage Destination</Label>
+              <RadioGroup defaultValue="firebase" value={storageOption} onValueChange={(value: StorageOption) => setStorageOption(value)} className="flex gap-4">
+                <Label htmlFor="firebase" className="flex items-center gap-2 p-4 border rounded-lg cursor-pointer flex-1 justify-center data-[state=checked]:border-primary">
+                  <RadioGroupItem value="firebase" id="firebase" />
+                  <Server className="w-5 h-5 mr-2" />
+                  Firebase Storage
+                </Label>
+                <Label htmlFor="drive" className="flex items-center gap-2 p-4 border rounded-lg cursor-pointer flex-1 justify-center data-[state=checked]:border-primary">
+                  <RadioGroupItem value="drive" id="drive" />
+                  <HardDrive className="w-5 h-5 mr-2" />
+                  Google Drive
+                </Label>
+              </RadioGroup>
+            </div>
+
              {uploadProgress !== null ? (
                <div className="space-y-2">
                  <Progress value={uploadProgress} />
