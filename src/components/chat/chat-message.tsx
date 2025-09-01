@@ -4,11 +4,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 type Message = {
   id: string;
   text: string;
-  senderId: string;
-  createdAt: {
-    seconds: number;
-    nanoseconds: number;
-  } | null;
+  sender_id: string; // match supabase column
+  created_at: string; // Supabase stores as ISO string
 };
 
 type ChatMessageProps = {
@@ -24,6 +21,11 @@ export default function ChatMessage({
   senderPhotoURL,
   senderUsername
 }: ChatMessageProps) {
+  const formattedTime = new Date(message.created_at).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
   return (
     <div className={cn('flex items-end gap-2', isOwnMessage ? 'justify-end' : '')}>
       {!isOwnMessage && (
@@ -41,6 +43,7 @@ export default function ChatMessage({
         )}
       >
         <p className="text-sm">{message.text}</p>
+        <p className="text-[10px] mt-1 opacity-70 text-right">{formattedTime}</p>
       </div>
     </div>
   );

@@ -28,8 +28,8 @@ export default function ProfilePage() {
   useEffect(() => {
     if (userProfile) {
       setUsername(userProfile.username);
-      setStatus(userProfile.status);
-      setPhotoURL(userProfile.photoURL);
+      setStatus(userProfile.status ?? '');
+      setPhotoURL(userProfile.photoURL ?? '');
     }
   }, [userProfile]);
 

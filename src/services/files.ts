@@ -22,7 +22,8 @@ export interface FileDocument {
  * @returns {Promise<FileDocument[]>} A promise that resolves to an array of file documents.
  */
 export async function getUserFiles(): Promise<FileDocument[]> {
-  const sessionCookie = cookies().get('__session')?.value;
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get('__session')?.value;
   if (!sessionCookie) {
     throw new Error('Authentication required.');
   }
