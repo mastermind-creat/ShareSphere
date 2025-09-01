@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Settings, LogOut, Upload, User as UserIcon } from 'lucide-react';
+import { LogOut, Upload, User as UserIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
@@ -33,10 +33,6 @@ export default function Header() {
             {loading ? null : user ? (
               <>
                 <AiSearch />
-                <Button>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload File
-                </Button>
                 <ThemeToggle />
                 <UserMenu />
               </>
@@ -94,14 +90,10 @@ function UserMenu() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild className="cursor-pointer">
-          <Link href="/profile">
+          <Link href="/dashboard">
             <UserIcon className="mr-2 h-4 w-4" />
-            <span>Profile</span>
+            <span>Dashboard</span>
           </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem className="cursor-pointer">
-          <Settings className="mr-2 h-4 w-4" />
-          <span>Settings</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">

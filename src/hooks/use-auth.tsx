@@ -3,7 +3,7 @@
 import type { User } from 'firebase/auth';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -43,6 +43,8 @@ const clearSessionCookie = async () => {
         console.error('Failed to clear session cookie:', error);
     }
 }
+
+const publicPaths = ['/landing', '/login', '/signup', '/forgot-password'];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -84,8 +86,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!loading && !user && !['/login', '/signup', '/forgot-password'].includes(pathname)) {
-      router.push('/login');
+    if (!loading && !user && !publicPaths.includes(pathname) && pathname !== '/') {
+      router.push('/landing');
     }
   }, [user, loading, pathname, router]);
 

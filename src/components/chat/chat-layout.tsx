@@ -17,7 +17,7 @@ type ChatLayoutProps = {
 
 export default function ChatLayout({ users, selectedUser, onSelectUser, loadingUsers }: ChatLayoutProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 h-[calc(100vh-150px)] border rounded-lg">
+    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 h-[calc(100vh-220px)] border rounded-lg">
       <div className="md:col-span-1 lg:col-span-1 border-r">
         <ChatSidebar 
             users={users} 

@@ -1,21 +1,29 @@
-import Header from '@/components/header';
-import FileUpload from '@/components/file-upload';
-import FileList from '@/components/file-list';
-import DriveFileList from '@/components/drive-file-list';
-import { Separator } from '@/components/ui/separator';
+'use client';
+
+import { useAuth } from '@/hooks/use-auth';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Logo } from '@/components/logo';
 
 export default function Home() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading) {
+      if (user) {
+        router.replace('/dashboard');
+      } else {
+        router.replace('/landing');
+      }
+    }
+  }, [user, loading, router]);
+
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Header />
-      <main className="flex-1 container mx-auto px-4 py-8 md:py-12">
-        <div className="space-y-8">
-          <FileUpload />
-          <FileList />
-          <Separator />
-          <DriveFileList />
-        </div>
-      </main>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+      <Logo />
+      <Skeleton className="h-96 w-full max-w-4xl mt-8" />
     </div>
   );
 }
