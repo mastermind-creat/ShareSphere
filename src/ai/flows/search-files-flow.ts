@@ -6,7 +6,7 @@
  * - FileSearchResult - The return type for the searchFiles function.
  */
 import { ai } from '@/ai/genkit';
-import { getUserFiles, type FileDocument } from '@/services/files';
+import { getUserFiles } from '@/services/files';
 import { z } from 'zod';
 
 const SearchFilesInputSchema = z.string();
@@ -17,7 +17,9 @@ const FileSearchResultSchema = z.object({
   size: z.number(),
   type: z.string(),
   url: z.string(),
-  reasoning: z.string().describe("A brief explanation of why this file matches the user's query."),
+  reasoning: z.string().describe(
+    "A brief explanation of why this file matches the user's query."
+  ),
 });
 export type FileSearchResult = z.infer<typeof FileSearchResultSchema>;
 
@@ -32,18 +34,25 @@ const filesTool = ai.defineTool(
     name: 'retrieveUserFiles',
     description: 'Retrieves a list of all files uploaded by the current user.',
     inputSchema: z.void(),
-    outputSchema: z.array(z.object({
-      id: z.string(),
-      name: z.string(),
-      size: z.number(),
-      type: z.string(),
-      url: z.string(),
-    })),
+    outputSchema: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        size: z.number(),
+        type: z.string(),
+        url: z.string(),
+      })
+    ),
   },
   async () => {
     const files = await getUserFiles();
-    // We only pass essential information to the model
-    return files.map(({ id, name, size, type, url }) => ({ id, name, size, type, url }));
+    return files.map(({ id, name, size, type, url }) => ({
+      id,
+      name,
+      size,
+      type,
+      url,
+    }));
   }
 );
 
@@ -61,11 +70,10 @@ User Query: "${query}"
 
 Based on the query, identify the files from the list that best match the user's request. Consider file names, types, and potential content implied by these properties. For each match, provide a brief reasoning for your choice. Return an array of matching files. If no files match, return an empty array.`,
       tools: [filesTool],
-      output: {
-        schema: SearchFilesOutputSchema,
-      },
+      output: { schema: SearchFilesOutputSchema },
     });
 
-    return llmResponse.output() || [];
+    // ✅ Fix: return output directly, fallback to []
+    return llmResponse.output ?? [];
   }
 );

@@ -88,23 +88,28 @@ export default function AuthForm({ mode }: { mode: AuthFormMode }) {
   };
 
   const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
-      if (error) throw error;
+  setIsLoading(true);
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+      },
+    });
 
-      // Redirect will be handled by Supabase OAuth
-      router.push('/');
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Google Sign-In Error',
-        description: error.message,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    if (error) throw error;
+    // Supabase handles redirect automatically
+  } catch (error: any) {
+    toast({
+      variant: 'destructive',
+      title: 'Google Sign-In Error',
+      description: error.message,
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   return (
     <Card>
