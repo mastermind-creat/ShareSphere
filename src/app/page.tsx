@@ -1,6 +1,8 @@
 import Header from '@/components/header';
 import FileUpload from '@/components/file-upload';
 import FileList from '@/components/file-list';
+import DriveFileList from '@/components/drive-file-list';
+import { Separator } from '@/components/ui/separator';
 
 export default function Home() {
   return (
@@ -10,6 +12,8 @@ export default function Home() {
         <div className="space-y-8">
           <FileUpload />
           <FileList />
+          <Separator />
+          <DriveFileList />
         </div>
       </main>
     </div>
