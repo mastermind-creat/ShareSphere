@@ -3,12 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import ChatLayout from '@/components/chat/chat-layout';
-import { collection, onSnapshot, query, where, DocumentData } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 import { Skeleton } from '@/components/ui/skeleton';
 
 type ChatUser = {
-  uid: string;
+  id: string;
   username: string;
   photoURL: string;
   status: string;
@@ -21,28 +20,52 @@ export default function ChatPageContent() {
   const [loadingUsers, setLoadingUsers] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      const q = query(collection(db, 'users'), where('__name__', '!=', user.uid));
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const usersData: ChatUser[] = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data() as DocumentData;
-          usersData.push({
-            uid: doc.id,
-            username: data.username,
-            photoURL: data.photoURL,
-            status: data.status
-          });
-        });
-        setUsers(usersData);
-        if (usersData.length > 0 && !selectedUser) {
-            setSelectedUser(usersData[0]);
-        }
-        setLoadingUsers(false);
-      });
+    if (!user) return;
 
-      return () => unsubscribe();
-    }
+    const fetchUsers = async () => {
+      setLoadingUsers(true);
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, username, photo_url, status')
+        .neq('id', user.id);
+
+      if (error) {
+        console.error('Error fetching users:', error.message);
+        setUsers([]);
+      } else if (data) {
+        // Map snake_case DB columns to camelCase
+        const mappedUsers: ChatUser[] = data.map((u: any) => ({
+          id: u.id,
+          username: u.username,
+          photoURL: u.photo_url || '', // map to camelCase
+          status: u.status,
+        }));
+
+        setUsers(mappedUsers);
+
+        if (!selectedUser && mappedUsers.length > 0) {
+          setSelectedUser(mappedUsers[0]);
+        }
+      }
+
+      setLoadingUsers(false);
+    };
+
+    fetchUsers();
+
+    // Real-time updates using Supabase v2
+    const channel = supabase
+      .channel('public_users')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'users', filter: `id=neq.${user.id}` },
+        () => fetchUsers()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   if (authLoading) {
@@ -50,7 +73,7 @@ export default function ChatPageContent() {
   }
 
   return (
-    <ChatLayout 
+    <ChatLayout
       users={users}
       selectedUser={selectedUser}
       onSelectUser={setSelectedUser}

@@ -3,14 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
-import { collection, query, orderBy, onSnapshot, DocumentData } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase';
 import ChatMessage from './chat-message';
 import ChatInput from './chat-input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 type ChatUser = {
-  uid: string;
+  id: string;
   username: string;
   photoURL: string;
   status: string;
@@ -23,11 +22,8 @@ type ChatWindowProps = {
 type Message = {
   id: string;
   text: string;
-  senderId: string;
-  createdAt: {
-    seconds: number;
-    nanoseconds: number;
-  } | null;
+  sender_id: string;
+  created_at: string;
 };
 
 export default function ChatWindow({ user: chatPartner }: ChatWindowProps) {
@@ -40,36 +36,49 @@ export default function ChatWindow({ user: chatPartner }: ChatWindowProps) {
   };
 
   useEffect(() => {
-    if (currentUser && chatPartner) {
-      const chatId = getChatId(currentUser.uid, chatPartner.uid);
-      const q = query(
-        collection(db, 'chats', chatId, 'messages'),
-        orderBy('createdAt', 'asc')
-      );
-      
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const msgs: Message[] = [];
-        querySnapshot.forEach((doc) => {
-          msgs.push({ id: doc.id, ...doc.data() } as Message);
-        });
-        setMessages(msgs);
-      });
+    if (!currentUser || !chatPartner) return;
 
-      return () => unsubscribe();
-    }
+    const chatId = getChatId(currentUser.id, chatPartner.id);
+
+    // Initial fetch
+    const fetchMessages = async () => {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('chat_id', chatId)
+        .order('created_at', { ascending: true });
+      if (error) console.error('Error fetching messages:', error);
+      else setMessages(data || []);
+    };
+    fetchMessages();
+
+    // Real-time subscription
+    const subscription = supabase
+      .channel(`chat:${chatId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
+        (payload) => {
+          setMessages((prev) => [...prev, payload.new as Message]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
   }, [currentUser, chatPartner]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-        // This is a workaround to scroll to the bottom.
-        setTimeout(() => {
-           if (scrollAreaRef.current) {
-               const viewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
-                if (viewport) {
-                    viewport.scrollTop = viewport.scrollHeight;
-                }
-           }
-        }, 100);
+      setTimeout(() => {
+        const viewport = scrollAreaRef.current.querySelector(
+          'div[data-radix-scroll-area-viewport]'
+        );
+        if (viewport) {
+          viewport.scrollTop = viewport.scrollHeight;
+        }
+      }, 100);
     }
   }, [messages]);
 
@@ -93,14 +102,14 @@ export default function ChatWindow({ user: chatPartner }: ChatWindowProps) {
             <ChatMessage
               key={msg.id}
               message={msg}
-              isOwnMessage={msg.senderId === currentUser?.uid}
-              senderPhotoURL={msg.senderId === currentUser?.uid ? '' : chatPartner.photoURL}
-              senderUsername={msg.senderId === currentUser?.uid ? '' : chatPartner.username}
+              isOwnMessage={msg.sender_id === currentUser?.id}
+              senderPhotoURL={msg.sender_id === currentUser?.id ? '' : chatPartner.photoURL}
+              senderUsername={msg.sender_id === currentUser?.id ? '' : chatPartner.username}
             />
           ))}
         </div>
       </ScrollArea>
-      <ChatInput chatPartnerId={chatPartner.uid} />
+      <ChatInput chatPartnerId={chatPartner.id} />
     </div>
   );
 }

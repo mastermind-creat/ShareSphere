@@ -1,10 +1,9 @@
 'use server';
 /**
- * @fileoverview Service for interacting with the files collection in Firestore.
+ * @fileoverview Service for interacting with the files table in Supabase.
  */
 
-import { db } from '@/lib/firebase-admin';
-import { auth } from 'firebase-admin';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { cookies } from 'next/headers';
 
 export interface FileDocument {
@@ -14,7 +13,7 @@ export interface FileDocument {
   type: string;
   url: string;
   ownerId: string;
-  createdAt: { seconds: number; nanoseconds: number; };
+  createdAt: string; // ISO string from Supabase timestamp
   storage: 'firebase' | 'drive';
 }
 
@@ -28,17 +27,27 @@ export async function getUserFiles(): Promise<FileDocument[]> {
     throw new Error('Authentication required.');
   }
 
-  const decodedToken = await auth().verifySessionCookie(sessionCookie, true);
-  const userId = decodedToken.uid;
-
-  const filesSnapshot = await db.collection('files').where('ownerId', '==', userId).get();
-  
-  if (filesSnapshot.empty) {
-    return [];
+  // Verify Supabase session
+  const { data: { user }, error: sessionError } = await supabaseAdmin.auth.getUser(sessionCookie);
+  if (sessionError || !user) {
+    throw new Error('Invalid or expired session. Please log in again.');
   }
 
-  return filesSnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data(),
-  } as FileDocument));
+  // Fetch files owned by user
+  const { data: files, error } = await supabaseAdmin
+    .from('files')
+    .select('*')
+    .eq('ownerId', user.id)
+    .order('createdAt', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching user files:', error);
+    throw new Error('Failed to fetch files.');
+  }
+
+  // Map Supabase timestamp to string if needed
+  return (files || []).map(file => ({
+    ...file,
+    createdAt: file.createdAt.toISOString(),
+  })) as FileDocument[];
 }

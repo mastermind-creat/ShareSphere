@@ -1,4 +1,5 @@
 'use client';
+
 import { useState, useEffect } from 'react';
 import {
   Table,
@@ -15,13 +16,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Link, QrCode, Trash2, File as FileIcon } from 'lucide-react';
+import { MoreHorizontal, Link, Trash2, File as FileIcon } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import ShareDialog from './share-dialog';
 import { useAuth } from '@/hooks/use-auth';
-import { db, storage } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
-import { ref, deleteObject } from "firebase/storage";
+import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Skeleton } from './ui/skeleton';
@@ -31,9 +30,9 @@ export type File = {
   name: string;
   size: number;
   type: string;
-  createdAt: { seconds: number; nanoseconds: number; };
+  created_at: string;
   url: string;
-  ownerId: string;
+  owner_id: string;
 };
 
 export default function FileList() {
@@ -44,24 +43,43 @@ export default function FileList() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (user) {
-      setLoading(true);
-      const q = query(collection(db, "files"), where("ownerId", "==", user.uid));
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const userFiles: File[] = [];
-        querySnapshot.forEach((doc) => {
-          userFiles.push({ id: doc.id, ...doc.data() } as File);
-        });
-        setFiles(userFiles.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds));
-        setLoading(false);
-      });
+  const fetchFiles = async () => {
+    if (!user) return;
+    setLoading(true);
 
-      return () => unsubscribe();
-    } else {
+    const { data, error } = await supabase
+      .from('files')
+      .select('*')
+      .eq('owner_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      toast({ variant: 'destructive', title: 'Error', description: error.message });
       setFiles([]);
-      setLoading(false);
+    } else if (data) {
+      setFiles(data as File[]);
     }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (!user) return;
+
+    fetchFiles();
+
+    // Real-time updates using Supabase v2
+    const channel = supabase
+      .channel(`files_owner_${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'files', filter: `owner_id=eq.${user.id}` },
+        () => fetchFiles()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const handleShare = (file: File) => {
@@ -70,23 +88,30 @@ export default function FileList() {
   };
 
   const handleDelete = async (file: File) => {
-    if (!user || user.uid !== file.ownerId) {
+    if (!user || user.id !== file.owner_id) {
       toast({ variant: 'destructive', title: 'Error', description: 'You do not have permission to delete this file.' });
       return;
     }
-    
+
     try {
-      // Delete from Firestore
-      await deleteDoc(doc(db, "files", file.id));
-      
-      // Delete from Storage
-      const fileRef = ref(storage, `files/${user.uid}/${file.name}`);
-      await deleteObject(fileRef);
+      // Delete from database
+      const { error } = await supabase
+        .from('files')
+        .delete()
+        .eq('id', file.id);
+
+      if (error) throw error;
+
+      // Delete from Supabase Storage
+      const { error: storageError } = await supabase.storage
+        .from('files')
+        .remove([`${user.id}/${file.name}`]);
+
+      if (storageError) throw storageError;
 
       toast({ title: 'Success', description: 'File deleted successfully.' });
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete the file.' });
-      console.error("Error deleting file:", error);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message || 'Failed to delete the file.' });
     }
   };
 
@@ -138,7 +163,7 @@ export default function FileList() {
                       <TableCell className="font-medium">{file.name}</TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground">{formatFileSize(file.size)}</TableCell>
                       <TableCell className="hidden lg:table-cell text-muted-foreground">
-                        {format(new Date(file.createdAt.seconds * 1000), 'PPP')}
+                        {format(new Date(file.created_at), 'PPP')}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -173,6 +198,7 @@ export default function FileList() {
           </div>
         </CardContent>
       </Card>
+
       {selectedFile && (
         <ShareDialog
           file={selectedFile}
