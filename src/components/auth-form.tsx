@@ -20,9 +20,10 @@ import {
   GoogleAuthProvider, 
   signInWithPopup 
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { Smartphone } from 'lucide-react';
 
 type AuthFormMode = 'login' | 'signup';
 
@@ -33,6 +34,18 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" />
     <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C42.099 32.626 44 27.643 44 24c0-1.341-.138-2.65-.389-3.917z" />
   </svg>
+);
+
+const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg fill="#1877F2" viewBox="0 0 24 24" {...props}>
+        <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v7.024C18.343 21.128 22 16.991 22 12z" />
+    </svg>
+);
+
+const XIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg fill="#000000" viewBox="0 0 24 24" {...props}>
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
 );
 
 export default function AuthForm({ mode }: { mode: AuthFormMode }) {
@@ -64,10 +77,12 @@ export default function AuthForm({ mode }: { mode: AuthFormMode }) {
         const user = userCredential.user;
         const userRef = doc(db, 'users', user.uid);
         await setDoc(userRef, {
-          username: name,
+          name: name,
           email: user.email,
-          photoURL: `https://picsum.photos/seed/${user.uid}/100`,
-          status: 'Hey there! I am using ShareSphere.',
+          phone: user.phoneNumber,
+          profilePic: `https://picsum.photos/seed/${user.uid}/100`,
+          status: 'Hey there! I am using ShareSphere.', // Default status
+          createdAt: serverTimestamp(),
         });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
@@ -101,11 +116,13 @@ export default function AuthForm({ mode }: { mode: AuthFormMode }) {
 
       if (!docSnap.exists()) {
         await setDoc(userRef, {
-          username: user.displayName,
+          name: user.displayName,
           email: user.email,
-          photoURL: user.photoURL,
+          phone: user.phoneNumber,
+          profilePic: user.photoURL,
           status: 'Hey there! I am using ShareSphere.',
           driveAccessToken: accessToken,
+          createdAt: serverTimestamp(),
         });
       } else {
          await setDoc(userRef, { driveAccessToken: accessToken }, { merge: true });
@@ -120,6 +137,13 @@ export default function AuthForm({ mode }: { mode: AuthFormMode }) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSocialSignIn = (provider: string) => {
+    toast({
+      title: 'Coming Soon!',
+      description: `${provider} sign-in is not yet available.`,
+    });
   };
 
   return (
@@ -165,10 +189,26 @@ export default function AuthForm({ mode }: { mode: AuthFormMode }) {
             </span>
           </div>
         </div>
-        <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
-          <GoogleIcon className="mr-2 h-4 w-4" />
-          Google
-        </Button>
+        <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
+                <GoogleIcon className="mr-2 h-4 w-4" />
+                Google
+            </Button>
+             <Button variant="outline" className="w-full" onClick={() => handleSocialSignIn('Phone')} disabled={isLoading}>
+                <Smartphone className="mr-2 h-4 w-4" />
+                Phone
+            </Button>
+        </div>
+         <div className="grid grid-cols-2 gap-2">
+             <Button variant="outline" className="w-full" onClick={() => handleSocialSignIn('Facebook')} disabled={isLoading}>
+                <FacebookIcon className="mr-2 h-4 w-4" />
+                Facebook
+            </Button>
+             <Button variant="outline" className="w-full" onClick={() => handleSocialSignIn('X')} disabled={isLoading}>
+                <XIcon className="mr-2 h-4 w-4" />
+                X
+            </Button>
+        </div>
       </CardContent>
       <CardFooter className="flex flex-col gap-4">
         <div className="text-sm text-center">
