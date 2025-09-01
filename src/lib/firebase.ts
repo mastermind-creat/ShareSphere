@@ -1,20 +1,20 @@
+// firebase.ts
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import { getMessaging } from 'firebase/messaging';
 
+// Firebase config
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyByEk-wABTzJs7yDTjsFn1iaQfE1j4rkrg",
+  authDomain: "ssphere-37bb4.firebaseapp.com",
+  projectId: "ssphere-37bb4",
+  storageBucket: "ssphere-37bb4.appspot.com",
+  messagingSenderId: "445655538309",
+  appId: "1:445655538309:web:e8d86bc17e2620d0c427ec",
+  measurementId: "G-0F88THJT5H",
 };
 
+// Initialize Firebase only if it hasn't been initialized yet
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
 
-export { app, auth, db, storage };
+// Export Firebase services
+export const messaging = getMessaging(app);

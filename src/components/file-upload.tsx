@@ -6,15 +6,13 @@ import { Button } from './ui/button';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import React, { useState, useRef } from 'react';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore"; 
-import { db, storage } from '@/lib/firebase';
 import { Progress } from './ui/progress';
 import imageCompression from 'browser-image-compression';
 import { Label } from './ui/label';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { supabase } from '@/lib/supabase';
 
-type StorageOption = 'firebase' | 'drive';
+type StorageOption = 'supabase' | 'drive';
 
 export default function FileUpload() {
   const { user } = useAuth();
@@ -22,36 +20,26 @@ export default function FileUpload() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const [storageOption, setStorageOption] = useState<StorageOption>('firebase');
+  const [storageOption, setStorageOption] = useState<StorageOption>('supabase');
 
-  const handleFileSelect = () => {
-    fileInputRef.current?.click();
-  };
-  
-  const onFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = () => fileInputRef.current?.click();
+
+  const onFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      if (file.size > 100 * 1024 * 1024) { // 100MB limit
-        toast({
-          variant: 'destructive',
-          title: 'File too large',
-          description: 'Please select a file smaller than 100MB.',
-        });
-        return;
-      }
-      setSelectedFile(file);
-    }
-  };
+    if (!file) return;
 
-  const handleUpload = async () => {
-    if (storageOption === 'drive') {
+    if (file.size > 100 * 1024 * 1024) {
       toast({
-        title: 'Coming Soon!',
-        description: 'Google Drive integration is not yet implemented.',
+        variant: 'destructive',
+        title: 'File too large',
+        description: 'Please select a file smaller than 100MB.',
       });
       return;
     }
+    setSelectedFile(file);
+  };
 
+  const handleUpload = async () => {
     if (!selectedFile || !user) {
       toast({
         variant: 'destructive',
@@ -61,66 +49,50 @@ export default function FileUpload() {
       return;
     }
 
+    if (storageOption === 'drive') {
+      toast({ title: 'Coming Soon!', description: 'Google Drive integration is not yet implemented.' });
+      return;
+    }
+
     let fileToUpload = selectedFile;
-    
+
+    // Compress image if applicable
     if (selectedFile.type.startsWith('image/')) {
       try {
-        const options = {
-          maxSizeMB: 1,
-          maxWidthOrHeight: 1920,
-          useWebWorker: true,
-        };
+        const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true };
         fileToUpload = await imageCompression(selectedFile, options);
-      } catch (error) {
-        console.error('Image compression error:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Compression Error',
-          description: 'Could not compress the image file.',
-        });
+      } catch (err) {
+        toast({ variant: 'destructive', title: 'Compression Error', description: 'Could not compress the image.' });
+        console.error(err);
       }
     }
 
-    const storageRef = ref(storage, `files/${user.uid}/${fileToUpload.name}`);
-    const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
+    try {
+      const filePath = `${user.id}/${fileToUpload.name}`;
+      const { data, error: uploadError } = await supabase.storage
+        .from('files')
+        .upload(filePath, fileToUpload, { cacheControl: '3600', upsert: true });
 
-    uploadTask.on('state_changed', 
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setUploadProgress(progress);
-      }, 
-      (error) => {
-        toast({
-          variant: 'destructive',
-          title: 'Upload Failed',
-          description: error.message,
-        });
-        setUploadProgress(null);
-        setSelectedFile(null);
-      }, 
-      async () => {
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        
-        await addDoc(collection(db, "files"), {
-          name: fileToUpload.name,
-          size: fileToUpload.size,
-          type: fileToUpload.type,
-          url: downloadURL,
-          ownerId: user.uid,
-          createdAt: serverTimestamp(),
-          storage: 'firebase',
-        });
+      if (uploadError) throw uploadError;
 
-        toast({
-          title: 'Upload Successful',
-          description: `${fileToUpload.name} has been uploaded.`,
-        });
-        setUploadProgress(null);
-        setSelectedFile(null);
-      }
-    );
+      const { publicUrl, error: urlError } = supabase.storage.from('files').getPublicUrl(filePath);
+      if (urlError) throw urlError;
+
+      const { error: dbError } = await supabase
+        .from('files')
+        .insert([{ name: fileToUpload.name, size: fileToUpload.size, type: fileToUpload.type, url: publicUrl, owner_id: user.id, storage: 'supabase' }]);
+
+      if (dbError) throw dbError;
+
+      toast({ title: 'Upload Successful', description: `${fileToUpload.name} has been uploaded.` });
+      setSelectedFile(null);
+      setUploadProgress(null);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Upload Failed', description: err.message });
+      setUploadProgress(null);
+    }
   };
-  
+
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -137,26 +109,26 @@ export default function FileUpload() {
       <CardContent>
         {selectedFile ? (
           <div className="space-y-4">
-             <div className="flex items-center justify-between p-4 border rounded-lg bg-secondary/50">
-                <div className="flex items-center gap-4">
-                  <File className="w-8 h-8 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">{selectedFile.name}</p>
-                    <p className="text-sm text-muted-foreground">{formatFileSize(selectedFile.size)}</p>
-                  </div>
+            <div className="flex items-center justify-between p-4 border rounded-lg bg-secondary/50">
+              <div className="flex items-center gap-4">
+                <File className="w-8 h-8 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">{selectedFile.name}</p>
+                  <p className="text-sm text-muted-foreground">{formatFileSize(selectedFile.size)}</p>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => setSelectedFile(null)}>
-                  <X className="w-4 h-4" />
-                </Button>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedFile(null)}>
+                <X className="w-4 h-4" />
+              </Button>
             </div>
-            
+
             <div className="space-y-2">
               <Label>Storage Destination</Label>
-              <RadioGroup defaultValue="firebase" value={storageOption} onValueChange={(value: StorageOption) => setStorageOption(value)} className="flex gap-4">
-                <Label htmlFor="firebase" className="flex items-center gap-2 p-4 border rounded-lg cursor-pointer flex-1 justify-center data-[state=checked]:border-primary">
-                  <RadioGroupItem value="firebase" id="firebase" />
+              <RadioGroup value={storageOption} onValueChange={(v: StorageOption) => setStorageOption(v)} className="flex gap-4">
+                <Label htmlFor="supabase" className="flex items-center gap-2 p-4 border rounded-lg cursor-pointer flex-1 justify-center data-[state=checked]:border-primary">
+                  <RadioGroupItem value="supabase" id="supabase" />
                   <Server className="w-5 h-5 mr-2" />
-                  Firebase Storage
+                  Supabase Storage
                 </Label>
                 <Label htmlFor="drive" className="flex items-center gap-2 p-4 border rounded-lg cursor-pointer flex-1 justify-center data-[state=checked]:border-primary">
                   <RadioGroupItem value="drive" id="drive" />
@@ -166,22 +138,15 @@ export default function FileUpload() {
               </RadioGroup>
             </div>
 
-             {uploadProgress !== null ? (
-               <div className="space-y-2">
-                 <Progress value={uploadProgress} />
-                 <p className="text-sm text-center text-muted-foreground">{Math.round(uploadProgress)}% uploaded</p>
-               </div>
-             ) : (
-                <Button onClick={handleUpload} className="w-full">
-                  <UploadCloud className="mr-2" />
-                  Upload
-                </Button>
-             )}
+            <Button onClick={handleUpload} className="w-full">
+              <UploadCloud className="mr-2" /> Upload
+            </Button>
+            {uploadProgress !== null && <Progress value={uploadProgress} />}
           </div>
         ) : (
           <>
             <input type="file" ref={fileInputRef} onChange={onFileChange} className="hidden" />
-            <div 
+            <div
               onClick={handleFileSelect}
               className="flex flex-col items-center justify-center w-full p-8 border-2 border-dashed rounded-lg border-border hover:border-primary transition-colors cursor-pointer bg-secondary/50"
             >
@@ -189,9 +154,7 @@ export default function FileUpload() {
               <p className="mt-4 text-lg text-muted-foreground">
                 <span className="font-semibold text-primary">Click to upload</span> or drag and drop
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Any file type, up to 100MB
-              </p>
+              <p className="mt-1 text-sm text-muted-foreground">Any file type, up to 100MB</p>
               <Button className="mt-6 pointer-events-none">Browse Files</Button>
             </div>
           </>

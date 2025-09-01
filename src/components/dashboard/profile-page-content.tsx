@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { supabase } from '@/lib/supabase';
 import { Camera, HardDrive } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
@@ -35,27 +35,37 @@ export default function ProfilePageContent() {
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
   };
-  
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && user) {
       setIsUploading(true);
-      const storage = getStorage();
-      const storageRef = ref(storage, `profile-pictures/${user.uid}`);
+      const fileName = `profile-pictures/${user.id}-${Date.now()}`;
       try {
-        await uploadBytes(storageRef, file);
-        const newPhotoURL = await getDownloadURL(storageRef);
-        setPhotoURL(newPhotoURL);
-        await updateUserProfile({ photoURL: newPhotoURL });
+        // Upload to Supabase Storage
+        const { data, error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, file, { cacheControl: '3600', upsert: true });
+        if (uploadError) throw uploadError;
+
+        // Get public URL
+        const { data: urlData, error: urlError } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+        if (urlError) throw urlError;
+
+        setPhotoURL(urlData.publicUrl);
+        await updateUserProfile({ photoURL: urlData.publicUrl });
+
         toast({
           title: 'Success',
           description: 'Profile picture updated successfully.',
         });
-      } catch (error) {
+      } catch (error: any) {
         toast({
           variant: 'destructive',
           title: 'Upload Error',
-          description: 'Failed to upload profile picture.',
+          description: error.message || 'Failed to upload profile picture.',
         });
       } finally {
         setIsUploading(false);
@@ -71,11 +81,11 @@ export default function ProfilePageContent() {
         title: 'Success',
         description: 'Profile updated successfully.',
       });
-    } catch (error) {
+    } catch (error: any) {
        toast({
         variant: 'destructive',
         title: 'Update Error',
-        description: 'Failed to update profile.',
+        description: error.message || 'Failed to update profile.',
       });
     }
   };
@@ -126,7 +136,7 @@ export default function ProfilePageContent() {
                   <AvatarImage src={photoURL} alt={username} />
                   <AvatarFallback>{username.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
-                 <div className="absolute bottom-1 right-1 bg-primary text-primary-foreground rounded-full p-2 hover:bg-primary/90 transition-colors">
+                <div className="absolute bottom-1 right-1 bg-primary text-primary-foreground rounded-full p-2 hover:bg-primary/90 transition-colors">
                   <Camera className="w-4 h-4" />
                 </div>
               </div>

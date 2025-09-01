@@ -1,25 +1,22 @@
 'use client';
 
-import type { User } from 'firebase/auth';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
 import { useRouter, usePathname } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 type UserProfile = {
   username: string;
-  name: string;
+  name?: string;
   email: string;
-  phone: string;
-  profilePic: string;
-  photoURL: string;
-  status: string;
+  phone?: string;
+  profilePic?: string;
+  photoURL?: string;
+  status?: string;
   driveAccessToken?: string;
 };
 
 type AuthContextType = {
-  user: User | null;
+  user: any | null;
   userProfile: UserProfile | null;
   loading: boolean;
   updateUserProfile: (profile: Partial<UserProfile>) => Promise<void>;
@@ -27,79 +24,65 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const setSessionCookie = async (user: User) => {
-    const idToken = await user.getIdToken();
-    try {
-        await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ idToken }),
-        });
-    } catch (error) {
-        console.error('Failed to set session cookie:', error);
-    }
-};
-
-const clearSessionCookie = async () => {
-    try {
-        await fetch('/api/auth/session', { method: 'DELETE' });
-    } catch (error) {
-        console.error('Failed to clear session cookie:', error);
-    }
-}
-
 const publicPaths = ['/landing', '/login', '/signup', '/forgot-password'];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      if (user) {
-        await setSessionCookie(user);
-        const userRef = doc(db, 'users', user.uid);
-        
-        const unsubProfile = onSnapshot(userRef, (doc) => {
-            if (doc.exists()) {
-                setUserProfile(doc.data() as UserProfile);
-            } else {
-                setUserProfile(null);
-            }
-        });
-
-        setLoading(false);
-        return () => unsubProfile();
-      } else {
-        await clearSessionCookie();
+    const getUserProfile = async (id: string) => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (error) {
+        console.error('Error fetching profile:', error);
         setUserProfile(null);
-        setLoading(false);
-        if (!publicPaths.includes(pathname)) {
-          router.push('/landing');
-        }
+      } else {
+        setUserProfile(data as UserProfile);
       }
+    };
+
+    const session = supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        setUser(data.session.user);
+        getUserProfile(data.session.user.id);
+      }
+      setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, []);
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        setUser(session.user);
+        await getUserProfile(session.user.id);
+      } else {
+        setUser(null);
+        setUserProfile(null);
+        if (!publicPaths.includes(pathname)) router.push('/landing');
+      }
+      setLoading(false);
+    });
 
-  useEffect(() => {
-    if (!loading && !user && !publicPaths.includes(pathname) && pathname !== '/') {
-      router.push('/landing');
-    }
-  }, [user, loading, pathname, router]);
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, [pathname, router]);
 
   const updateUserProfile = async (profile: Partial<UserProfile>) => {
-    if (user) {
-      const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, profile, { merge: true });
-    }
+    if (!user) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update(profile)
+      .eq('id', user.id);
+    if (error) console.error('Error updating profile:', error);
+    else setUserProfile((prev) => ({ ...prev!, ...profile }));
   };
-  
+
   const value = { user, userProfile, loading, updateUserProfile };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -107,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;

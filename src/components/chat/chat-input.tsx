@@ -5,8 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Paperclip, Mic, SendHorizonal, Smile } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 
 type ChatInputProps = {
@@ -25,22 +24,27 @@ export default function ChatInput({ chatPartnerId }: ChatInputProps) {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim() || !user) return;
-    
-    const chatId = getChatId(user.uid, chatPartnerId);
-    
+
+    const chatId = getChatId(user.id, chatPartnerId);
+
     try {
-      await addDoc(collection(db, 'chats', chatId, 'messages'), {
-        text: message,
-        senderId: user.uid,
-        createdAt: serverTimestamp(),
-        read: false,
-      });
+      const { error } = await supabase.from('messages').insert([
+        {
+          chat_id: chatId,
+          sender_id: user.id,
+          text: message,
+          read: false,
+        },
+      ]);
+
+      if (error) throw error;
+
       setMessage('');
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Could not send message.',
+        description: error.message || 'Could not send message.',
       });
     }
   };
