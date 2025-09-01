@@ -16,6 +16,7 @@ import { Settings, LogOut, Upload, User as UserIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+import { ThemeToggle } from './theme-toggle';
 
 export default function Header() {
   const { user, loading } = useAuth();
@@ -34,10 +35,12 @@ export default function Header() {
                   <Upload className="mr-2 h-4 w-4" />
                   Upload File
                 </Button>
+                <ThemeToggle />
                 <UserMenu />
               </>
             ) : (
               <>
+                <ThemeToggle />
                 <Button variant="ghost" asChild>
                   <Link href="/login">Log In</Link>
                 </Button>
