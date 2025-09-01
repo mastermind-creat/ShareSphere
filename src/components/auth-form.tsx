@@ -114,7 +114,7 @@ export default function AuthForm({ mode }: { mode: AuthFormMode }) {
   };
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card>
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">{title}</CardTitle>
         <CardDescription>{description}</CardDescription>

@@ -1,5 +1,10 @@
 import AuthForm from '@/components/auth-form';
+import AuthLayout from '../(auth)/layout';
 
 export default function SignupPage() {
-  return <AuthForm mode="signup" />;
+  return (
+    <AuthLayout>
+      <AuthForm mode="signup" />
+    </AuthLayout>
+  );
 }
