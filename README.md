@@ -1,47 +1,55 @@
 # 📂 ShareSphere – Smart Resource Sharing App
 
-ShareSphere is a modern resource-sharing app that allows users to **send and receive large files seamlessly**.  
-It combines **local storage sharing** for nearby transfers with **Google Drive cloud integration** for longer distances.  
-The app compresses files before transfer for faster delivery and automatically decompresses them at the destination.  
+ShareSphere is a cutting-edge resource-sharing platform that allows users to **send and receive large files seamlessly**, whether nearby or across the globe.  
+It leverages **local P2P transfers** for fast, nearby sharing and **cloud storage** for remote transfers, with automatic compression and decompression for optimized performance.
 
 ---
 
-## 🚀 Features
+## 🚀 Key Features
 
-- 🔑 **Secure Authentication** – Firebase Authentication (Email/Password, Google Sign-In).
-- 💾 **Smart File Sharing**  
-  - Local storage sharing with device permission.  
-  - Cloud sharing using Google Drive + Firebase Storage.  
-  - Automatic file compression & decompression.
-- 📡 **Offline & Online Transfers**  
-  - Nearby transfers via **QR codes**.  
-  - Remote transfers via cloud.
-- 💬 **In-App Chat** – Communicate with friends before/during file sharing.
-- 🖼️ **Supports All File Types** – Documents, images, videos, music, and more.
-- 🎨 **Modern UI** – Clean, responsive, and intuitive design.
-- 🔒 **Privacy First** – User controls their data; no unnecessary tracking.
+- 🔑 **Secure Authentication**
+
+  - Supabase Authentication with Email/Password and OAuth (Google, etc.)
+  - Optional Firebase integration for additional cloud services
+
+- 💾 **Smart File Sharing**
+
+  - Local device transfers via QR codes or local network
+  - Cloud sharing via Supabase Storage or Google Drive
+  - Automatic compression & decompression for faster delivery
+
+- 📡 **Offline & Online Transfers**
+
+  - Nearby sharing without internet
+  - Remote sharing through secure cloud storage
+
+- 💬 **In-App Chat**
+
+  - Real-time chat with friends during file transfers
+  - Supabase Realtime integration for instant messaging
+  - Send text messages, file links, and notifications
+
+- 🖼️ **Supports All File Types**
+
+  - Documents, images, videos, music, and more
+
+- 🎨 **Modern UI**
+
+  - Clean, intuitive, and responsive design for web and mobile
+
+- 🔒 **Privacy First**
+  - Users retain full control over their data
+  - No unnecessary tracking or data collection
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: Flutter / React Native (cross-platform mobile app)  
-- **Backend**: Firebase (Authentication, Firestore, Cloud Storage, Hosting)  
-- **Cloud Integration**: Google Drive API for extended storage  
-- **Utilities**: Compression & Decompression libraries, QR code generation, Socket connections  
+- **Frontend**: Next.js (cross-platform mobile & web)
+- **Backend & Authentication**: Supabase (Auth, Realtime, Storage)
+- **Cloud Integration**: Optional Google Drive API for extended storage
+- **Utilities**: File compression/decompression, QR code generation, socket connections, FCM notifications
 
 ---
 
-## 📂 Project Structure (Firebase + App)
-
-/sharesphere
-├── src
-│ ├── auth/ # Authentication logic
-│ ├── chat/ # Chat feature
-│ ├── file-sharing/ # Upload, compress, transfer, download
-│ ├── qr-code/ # QR generation & scanning
-│ └── ui/ # Screens & components
-├── firebase.json # Firebase hosting config
-├── firestore.rules # Firestore security rules
-├── storage.rules # Storage security rules
-└── README.md # This file
+## 📂 Project Structure
