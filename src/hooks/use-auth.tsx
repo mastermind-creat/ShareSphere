@@ -79,6 +79,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await clearSessionCookie();
         setUserProfile(null);
         setLoading(false);
+        if (!publicPaths.includes(pathname)) {
+          router.push('/landing');
+        }
       }
     });
 

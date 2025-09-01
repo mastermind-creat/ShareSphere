@@ -12,11 +12,17 @@ export async function POST(request: NextRequest) {
     cookies().set('__session', sessionCookie, { maxAge: expiresIn, httpOnly: true, secure: true });
     return NextResponse.json({ status: 'success' });
   } catch (error) {
+    console.error('Failed to create session:', error);
     return NextResponse.json({ status: 'error', message: 'Failed to create session' }, { status: 401 });
   }
 }
 
 export async function DELETE() {
-  cookies().delete('__session');
-  return NextResponse.json({ status: 'success' });
+  try {
+    cookies().delete('__session');
+    return NextResponse.json({ status: 'success' });
+  } catch (error) {
+    console.error('Failed to clear session:', error);
+    return NextResponse.json({ status: 'error', message: 'Failed to clear session' }, { status: 500 });
+  }
 }
