@@ -4,11 +4,15 @@
     "runtime": "nodejs18"
   },
   "hosting": {
-    "public": "out",
+    "source": ".",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
-    ]
+    ],
+    "backend": {
+      "id": "sharesphere",
+      "region": "us-central1"
+    }
   }
 }
