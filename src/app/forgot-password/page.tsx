@@ -13,8 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import AuthLayout from '../(auth)/layout';
 
@@ -27,8 +26,16 @@ export default function ForgotPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+
     try {
-      await sendPasswordResetEmail(auth, email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`, // ✅ user clicks email → redirected here
+      });
+
+      if (error) {
+        throw error;
+      }
+
       setIsSent(true);
       toast({
         title: 'Password Reset Email Sent',
@@ -52,8 +59,8 @@ export default function ForgotPasswordPage() {
           <CardTitle className="text-2xl">Forgot Password</CardTitle>
           <CardDescription>
             {isSent
-              ? "A password reset link has been sent to your email."
-              : "Enter your email to receive a password reset link."}
+              ? 'A password reset link has been sent to your email.'
+              : 'Enter your email to receive a password reset link.'}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
