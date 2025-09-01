@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -9,43 +9,18 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, File as FileIcon, Image as ImageIcon, Video, Music, FileJson } from 'lucide-react';
+import { MoreHorizontal, File as FileIcon, Image as ImageIcon, Video, Music, FileJson, Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Badge } from './ui/badge';
+import { listDriveFiles } from '@/app/actions/drive';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 
-type DriveFile = {
+export type DriveFile = {
   id: string;
   name: string;
   mimeType: string;
 };
-
-const sampleDriveFiles: DriveFile[] = [
-    {
-      "id": "1glSQPbXLAwHCWHMvYwe38Rr1AGSI2imJ",
-      "name": "applet_access_history.json",
-      "mimeType": "application/json"
-    },
-    {
-      "id": "1bqehTBLiOhimgDKgenWsO3gwHLSsXu1R",
-      "name": "ShareSphere",
-      "mimeType": "application/vnd.google-makersuite.applet+zip"
-    },
-    {
-      "id": "1WtKXidaVNsxdFxIYXRNevucksa5gFgFG",
-      "name": "MindSpark",
-      "mimeType": "application/vnd.google-makersuite.applet+zip"
-    },
-    {
-      "id": "1E30TclycdjZZauPP7OkLOZMY-ttZZ6uW",
-      "name": "Wambia-Kennedy-Cover_Letter.pdf",
-      "mimeType": "application/pdf"
-    },
-    {
-      "id": "1xjwhWP11unhQ5P5YeaiFahAg8cCW84Xd",
-      "name": "IMG_8781.JPG",
-      "mimeType": "image/jpeg"
-    }
-];
 
 const getFileIcon = (mimeType: string) => {
     if (mimeType.startsWith('image/')) return <ImageIcon className="h-6 w-6 text-muted-foreground" />;
@@ -57,14 +32,62 @@ const getFileIcon = (mimeType: string) => {
 
 
 export default function DriveFileList() {
-  const [files] = useState<DriveFile[]>(sampleDriveFiles);
+  const [files, setFiles] = useState<DriveFile[]>([]);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+  const { user, userProfile } = useAuth();
+
+  const fetchDriveFiles = async () => {
+    if (!user || !userProfile?.driveAccessToken) {
+        toast({
+          variant: "destructive",
+          title: "Google Drive Not Connected",
+          description: "Please sign in with Google to view your Drive files.",
+        });
+        return;
+    }
+    setLoading(true);
+    try {
+        const result = await listDriveFiles();
+        if(result.error) {
+            toast({
+                variant: "destructive",
+                title: "Error fetching Drive files",
+                description: result.error,
+            });
+            setFiles([]);
+        } else {
+            setFiles(result.files || []);
+        }
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "An unexpected error occurred while fetching Drive files.",
+        });
+    } finally {
+        setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if(userProfile?.driveAccessToken) {
+      fetchDriveFiles();
+    }
+  }, [userProfile?.driveAccessToken]);
   
   return (
     <>
       <Card>
-        <CardHeader>
-          <CardTitle>Google Drive Files</CardTitle>
-          <CardDescription>This is a preview of files from your Google Drive.</CardDescription>
+        <CardHeader className='flex-row items-center justify-between'>
+          <div>
+            <CardTitle>Google Drive Files</CardTitle>
+            <CardDescription>A preview of files from your connected Google Drive account.</CardDescription>
+          </div>
+          <Button onClick={fetchDriveFiles} disabled={loading || !userProfile?.driveAccessToken}>
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Refresh
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border">
@@ -78,7 +101,13 @@ export default function DriveFileList() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {files.length > 0 ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                       <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+                    </TableCell>
+                  </TableRow>
+                ) : files.length > 0 ? (
                   files.map((file) => (
                     <TableRow key={file.id}>
                       <TableCell className="hidden sm:table-cell">
@@ -100,7 +129,7 @@ export default function DriveFileList() {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center">
-                      No files found in Google Drive.
+                     {userProfile?.driveAccessToken ? 'No files found in Google Drive.' : 'Connect your Google Drive account to see your files.'}
                     </TableCell>
                   </TableRow>
                 )}

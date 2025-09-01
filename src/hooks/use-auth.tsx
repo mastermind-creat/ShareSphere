@@ -3,7 +3,7 @@
 import type { User } from 'firebase/auth';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -11,6 +11,7 @@ type UserProfile = {
   username: string;
   photoURL: string;
   status: string;
+  driveAccessToken?: string;
 };
 
 type AuthContextType = {
@@ -21,6 +22,27 @@ type AuthContextType = {
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const setSessionCookie = async (user: User) => {
+    const idToken = await user.getIdToken();
+    try {
+        await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken }),
+        });
+    } catch (error) {
+        console.error('Failed to set session cookie:', error);
+    }
+};
+
+const clearSessionCookie = async () => {
+    try {
+        await fetch('/api/auth/session', { method: 'DELETE' });
+    } catch (error) {
+        console.error('Failed to clear session cookie:', error);
+    }
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -33,24 +55,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       if (user) {
+        await setSessionCookie(user);
         const userRef = doc(db, 'users', user.uid);
-        const docSnap = await getDoc(userRef);
-        if (docSnap.exists()) {
-          setUserProfile(docSnap.data() as UserProfile);
-        } else {
-          // Create a default profile if it doesn't exist
-          const defaultProfile: UserProfile = {
-            username: user.displayName || user.email?.split('@')[0] || 'New User',
-            photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/100`,
-            status: 'Hey there! I am using ShareSphere.',
-          };
-          await setDoc(userRef, defaultProfile);
-          setUserProfile(defaultProfile);
-        }
+        
+        const unsubProfile = onSnapshot(userRef, (doc) => {
+            if (doc.exists()) {
+                setUserProfile(doc.data() as UserProfile);
+            } else {
+                 const defaultProfile: UserProfile = {
+                    username: user.displayName || user.email?.split('@')[0] || 'New User',
+                    photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/100`,
+                    status: 'Hey there! I am using ShareSphere.',
+                  };
+                  setDoc(userRef, defaultProfile).then(() => setUserProfile(defaultProfile));
+            }
+        });
+
+        setLoading(false);
+        return () => unsubProfile();
       } else {
+        await clearSessionCookie();
         setUserProfile(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -66,10 +93,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user) {
       const userRef = doc(db, 'users', user.uid);
       await setDoc(userRef, profile, { merge: true });
-      const docSnap = await getDoc(userRef);
-      if (docSnap.exists()) {
-        setUserProfile(docSnap.data() as UserProfile);
-      }
     }
   };
   

@@ -87,8 +87,14 @@ export default function AuthForm({ mode }: { mode: AuthFormMode }) {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     const provider = new GoogleAuthProvider();
+    provider.addScope('https://www.googleapis.com/auth/drive.readonly');
+    
     try {
       const result = await signInWithPopup(auth, provider);
+      
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const accessToken = credential?.accessToken;
+
       const user = result.user;
       const userRef = doc(db, 'users', user.uid);
       const docSnap = await getDoc(userRef);
@@ -99,7 +105,10 @@ export default function AuthForm({ mode }: { mode: AuthFormMode }) {
           email: user.email,
           photoURL: user.photoURL,
           status: 'Hey there! I am using ShareSphere.',
+          driveAccessToken: accessToken,
         });
+      } else {
+         await setDoc(userRef, { driveAccessToken: accessToken }, { merge: true });
       }
       router.push('/');
     } catch (error: any) {
