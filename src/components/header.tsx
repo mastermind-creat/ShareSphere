@@ -17,6 +17,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { ThemeToggle } from './theme-toggle';
+import { AiSearch } from './ai-search';
 
 export default function Header() {
   const { user, loading } = useAuth();
@@ -31,6 +32,7 @@ export default function Header() {
           <div className="flex items-center gap-4">
             {loading ? null : user ? (
               <>
+                <AiSearch />
                 <Button>
                   <Upload className="mr-2 h-4 w-4" />
                   Upload File
