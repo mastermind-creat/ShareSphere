@@ -44,10 +44,13 @@ export default function AuthForm({ mode }: { mode: AuthFormMode }) {
 
     try {
       if (mode === 'signup') {
-        const { data, error } = await supabase.auth.signUp(
-          { email, password },
-          { data: { username } } // Optional user metadata
-        );
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { username }, // Optional user metadata
+          },
+        });
 
         if (error) throw error;
 

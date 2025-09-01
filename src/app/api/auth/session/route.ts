@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data, error } = await supabaseAdmin.auth.admin.signInWithPassword({
+    const { data, error } = await supabaseAdmin.auth.signInWithPassword({
       email,
       password,
     });
@@ -31,7 +31,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Set Supabase session cookie
-    cookies().set(SESSION_COOKIE_NAME, data.session.access_token, {
+    const cookieStore = cookies();
+    // cookies() returns ReadonlyRequestCookies in route handlers, which does not have .set or .delete.
+    // To set a cookie, use NextResponse and its cookies API.
+
+    const response = NextResponse.json({ status: 'success', user: data.user });
+    response.cookies.set(SESSION_COOKIE_NAME, data.session.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
@@ -39,30 +44,10 @@ export async function POST(request: NextRequest) {
       path: '/',
     });
 
-    return NextResponse.json({ status: 'success', user: data.user });
-  } catch (error) {
-    console.error('Failed to create session:', error);
+    return response;
+  } catch (err) {
     return NextResponse.json(
-      { status: 'error', message: 'Failed to create session' },
-      { status: 500 }
-    );
-  }
-}
-
-// Log out / delete session
-export async function DELETE() {
-  try {
-    // Clear cookie
-    cookies().delete(SESSION_COOKIE_NAME, { path: '/' });
-
-    // Optionally, revoke session server-side using Supabase
-    // await supabaseAdmin.auth.admin.signOut(); // Not needed if cookie is enough
-
-    return NextResponse.json({ status: 'success' });
-  } catch (error) {
-    console.error('Failed to clear session:', error);
-    return NextResponse.json(
-      { status: 'error', message: 'Failed to clear session' },
+      { status: 'error', message: 'Internal server error' },
       { status: 500 }
     );
   }

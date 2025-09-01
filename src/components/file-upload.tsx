@@ -75,8 +75,8 @@ export default function FileUpload() {
 
       if (uploadError) throw uploadError;
 
-      const { publicUrl, error: urlError } = supabase.storage.from('files').getPublicUrl(filePath);
-      if (urlError) throw urlError;
+      const { data: urlData } = supabase.storage.from('files').getPublicUrl(filePath);
+      const publicUrl = urlData?.publicUrl;
 
       const { error: dbError } = await supabase
         .from('files')

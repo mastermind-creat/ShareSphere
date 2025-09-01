@@ -2,16 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import ChatLayout from '@/components/chat/chat-layout';
+import ChatLayout, { ChatUser } from '@/components/chat/chat-layout';
 import { supabase } from '@/lib/supabase';
 import { Skeleton } from '@/components/ui/skeleton';
-
-type ChatUser = {
-  id: string;
-  username: string;
-  photoURL: string;
-  status: string;
-};
 
 export default function ChatPageContent() {
   const { user, loading: authLoading } = useAuth();
@@ -26,19 +19,19 @@ export default function ChatPageContent() {
       setLoadingUsers(true);
       const { data, error } = await supabase
         .from('users')
-        .select('id, username, photo_url, status')
+        .select('id, username, avatar_url, status')
         .neq('id', user.id);
 
       if (error) {
         console.error('Error fetching users:', error.message);
         setUsers([]);
       } else if (data) {
-        // Map snake_case DB columns to camelCase
+        // Map DB columns directly into ChatUser
         const mappedUsers: ChatUser[] = data.map((u: any) => ({
           id: u.id,
           username: u.username,
-          photoURL: u.photo_url || '', // map to camelCase
-          status: u.status,
+          avatar_url: u.avatar_url || null,
+          status: u.status || null,
         }));
 
         setUsers(mappedUsers);
@@ -53,7 +46,7 @@ export default function ChatPageContent() {
 
     fetchUsers();
 
-    // Real-time updates using Supabase v2
+    // Real-time updates using Supabase
     const channel = supabase
       .channel('public_users')
       .on(
@@ -76,7 +69,7 @@ export default function ChatPageContent() {
     <ChatLayout
       users={users}
       selectedUser={selectedUser}
-      onSelectUser={setSelectedUser}
+      onSelectUser={(user) => setSelectedUser(user)}
       loadingUsers={loadingUsers}
     />
   );

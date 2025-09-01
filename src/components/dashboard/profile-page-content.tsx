@@ -26,9 +26,9 @@ export default function ProfilePageContent() {
   
   useEffect(() => {
     if (userProfile) {
-      setUsername(userProfile.username);
-      setStatus(userProfile.status);
-      setPhotoURL(userProfile.photoURL);
+      setUsername(userProfile.username ?? '');
+      setStatus(userProfile.status ?? '');
+      setPhotoURL(userProfile.photoURL ?? '');
     }
   }, [userProfile]);
 
@@ -49,10 +49,9 @@ export default function ProfilePageContent() {
         if (uploadError) throw uploadError;
 
         // Get public URL
-        const { data: urlData, error: urlError } = supabase.storage
+        const { data: urlData } = supabase.storage
           .from('avatars')
           .getPublicUrl(fileName);
-        if (urlError) throw urlError;
 
         setPhotoURL(urlData.publicUrl);
         await updateUserProfile({ photoURL: urlData.publicUrl });

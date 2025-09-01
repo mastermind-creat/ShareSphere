@@ -1,31 +1,39 @@
 import ChatSidebar from './chat-sidebar';
 import ChatWindow from './chat-window';
 
-type ChatUser = {
-  uid: string;
+export type ChatUser = {
+  id: string;
   username: string;
-  photoURL: string;
-  status: string;
+  avatar_url: string | null;
+  status: string | null;
 };
 
 type ChatLayoutProps = {
   users: ChatUser[];
   selectedUser: ChatUser | null;
-  onSelectUser: (user: ChatUser) => void;
+  onSelectUser: (user: ChatUser | null) => void;
   loadingUsers: boolean;
 };
 
-export default function ChatLayout({ users, selectedUser, onSelectUser, loadingUsers }: ChatLayoutProps) {
+export default function ChatLayout({
+  users,
+  selectedUser,
+  onSelectUser,
+  loadingUsers,
+}: ChatLayoutProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 h-[calc(100vh-220px)] border rounded-lg">
+    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 h-[calc(100vh-220px)] border rounded-lg overflow-hidden">
+      {/* Sidebar */}
       <div className="md:col-span-1 lg:col-span-1 border-r">
-        <ChatSidebar 
-            users={users} 
-            selectedUser={selectedUser} 
-            onSelectUser={onSelectUser}
-            loading={loadingUsers}
+        <ChatSidebar
+          users={users}
+          selectedUser={selectedUser}
+          onSelectUser={onSelectUser}
+          loadingUsers={loadingUsers}
         />
       </div>
+
+      {/* Chat window */}
       <div className="md:col-span-2 lg:col-span-3 h-full flex flex-col">
         {selectedUser ? (
           <ChatWindow user={selectedUser} />

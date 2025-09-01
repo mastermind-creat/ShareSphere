@@ -17,7 +17,7 @@ type DriveFileListResult = {
 
 export async function listDriveFiles(): Promise<DriveFileListResult> {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('__session')?.value;
 
     if (!sessionCookie) {
