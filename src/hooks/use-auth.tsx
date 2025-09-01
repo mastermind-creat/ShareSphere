@@ -3,7 +3,7 @@
 import type { User } from 'firebase/auth';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -68,15 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (doc.exists()) {
                 setUserProfile(doc.data() as UserProfile);
             } else {
-                 const defaultProfile = {
-                    name: user.displayName || user.email?.split('@')[0] || 'New User',
-                    email: user.email,
-                    phone: user.phoneNumber,
-                    profilePic: user.photoURL || `https://picsum.photos/seed/${user.uid}/100`,
-                    status: 'Hey there! I am using ShareSphere.',
-                    createdAt: serverTimestamp(),
-                  };
-                  setDoc(userRef, defaultProfile).then(() => setUserProfile(defaultProfile as UserProfile));
+                setUserProfile(null);
             }
         });
 

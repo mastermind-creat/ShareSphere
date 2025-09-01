@@ -53,7 +53,7 @@ export default function AuthForm({ mode }: { mode: AuthFormMode }) {
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const title = mode === 'login' ? 'Welcome back!' : 'Create an account';
@@ -77,10 +77,9 @@ export default function AuthForm({ mode }: { mode: AuthFormMode }) {
         const user = userCredential.user;
         const userRef = doc(db, 'users', user.uid);
         await setDoc(userRef, {
-          name: name,
+          username: username,
           email: user.email,
-          phone: user.phoneNumber,
-          profilePic: `https://picsum.photos/seed/${user.uid}/100`,
+          photoURL: `https://picsum.photos/seed/${user.uid}/100`,
           status: 'Hey there! I am using ShareSphere.', // Default status
           createdAt: serverTimestamp(),
         });
@@ -116,10 +115,9 @@ export default function AuthForm({ mode }: { mode: AuthFormMode }) {
 
       if (!docSnap.exists()) {
         await setDoc(userRef, {
-          name: user.displayName,
+          username: user.displayName,
           email: user.email,
-          phone: user.phoneNumber,
-          profilePic: user.photoURL,
+          photoURL: user.photoURL,
           status: 'Hey there! I am using ShareSphere.',
           driveAccessToken: accessToken,
           createdAt: serverTimestamp(),
@@ -156,8 +154,8 @@ export default function AuthForm({ mode }: { mode: AuthFormMode }) {
         <form onSubmit={handleAuthAction} className="grid gap-4">
           {mode === 'signup' && (
             <div className="grid gap-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input id="name" placeholder="John Doe" required value={name} onChange={(e) => setName(e.target.value)} />
+              <Label htmlFor="username">Username</Label>
+              <Input id="username" placeholder="John Doe" required value={username} onChange={(e) => setUsername(e.target.value)} />
             </div>
           )}
           <div className="grid gap-2">
