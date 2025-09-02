@@ -46,10 +46,14 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   },
   async rewrites() {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl || !supabaseUrl.startsWith('http')) {
+      throw new Error('NEXT_PUBLIC_SUPABASE_URL is not set or is invalid');
+    }
     return [
       {
         source: '/functions/:path*',
-        destination: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/:path*`, // Ensure this resolves to a valid URL
+        destination: `${supabaseUrl}/functions/v1/:path*`,
       },
     ];
   },
