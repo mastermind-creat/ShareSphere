@@ -49,7 +49,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/functions/:path*',
-        destination: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/:path*`,
+        destination: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/:path*`, // Ensure this resolves to a valid URL
       },
     ];
   },
